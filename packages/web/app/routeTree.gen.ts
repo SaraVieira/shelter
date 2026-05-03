@@ -13,18 +13,22 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsIdRouteImport } from './routes/projects/$id'
 import { Route as OrgSlugRouteImport } from './routes/org/$slug'
+import { Route as InviteInvitationIdRouteImport } from './routes/invite/$invitationId'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ApiProjectsRouteImport } from './routes/api/projects'
 import { Route as ApiOrganizationsRouteImport } from './routes/api/organizations'
+import { Route as ApiInviteRouteImport } from './routes/api/invite'
 import { Route as ProjectsIdIndexRouteImport } from './routes/projects/$id.index'
 import { Route as OrgSlugIndexRouteImport } from './routes/org/$slug.index'
 import { Route as ProjectsIdApiKeysRouteImport } from './routes/projects/$id.api-keys'
 import { Route as OrgSlugNewProjectRouteImport } from './routes/org/$slug.new-project'
 import { Route as ApiRunsIdRouteImport } from './routes/api/runs/$id'
 import { Route as ApiProjectsIdRouteImport } from './routes/api/projects/$id'
+import { Route as ApiInviteIdRouteImport } from './routes/api/invite/$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProjectsIdRunsRunIdRouteImport } from './routes/projects/$id/runs/$runId'
 import { Route as ApiRunsIdDiffRouteImport } from './routes/api/runs/$id/diff'
+import { Route as ApiInviteIdAcceptRouteImport } from './routes/api/invite/$id/accept'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -46,6 +50,11 @@ const OrgSlugRoute = OrgSlugRouteImport.update({
   path: '/org/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteInvitationIdRoute = InviteInvitationIdRouteImport.update({
+  id: '/invite/$invitationId',
+  path: '/invite/$invitationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
   id: '/api/upload',
   path: '/api/upload',
@@ -59,6 +68,11 @@ const ApiProjectsRoute = ApiProjectsRouteImport.update({
 const ApiOrganizationsRoute = ApiOrganizationsRouteImport.update({
   id: '/api/organizations',
   path: '/api/organizations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInviteRoute = ApiInviteRouteImport.update({
+  id: '/api/invite',
+  path: '/api/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsIdIndexRoute = ProjectsIdIndexRouteImport.update({
@@ -91,6 +105,11 @@ const ApiProjectsIdRoute = ApiProjectsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiProjectsRoute,
 } as any)
+const ApiInviteIdRoute = ApiInviteIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiInviteRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -106,38 +125,51 @@ const ApiRunsIdDiffRoute = ApiRunsIdDiffRouteImport.update({
   path: '/diff',
   getParentRoute: () => ApiRunsIdRoute,
 } as any)
+const ApiInviteIdAcceptRoute = ApiInviteIdAcceptRouteImport.update({
+  id: '/accept',
+  path: '/accept',
+  getParentRoute: () => ApiInviteIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/api/invite': typeof ApiInviteRouteWithChildren
   '/api/organizations': typeof ApiOrganizationsRoute
   '/api/projects': typeof ApiProjectsRouteWithChildren
   '/api/upload': typeof ApiUploadRoute
+  '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/org/$slug': typeof OrgSlugRouteWithChildren
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/invite/$id': typeof ApiInviteIdRouteWithChildren
   '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/runs/$id': typeof ApiRunsIdRouteWithChildren
   '/org/$slug/new-project': typeof OrgSlugNewProjectRoute
   '/projects/$id/api-keys': typeof ProjectsIdApiKeysRoute
   '/org/$slug/': typeof OrgSlugIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
+  '/api/invite/$id/accept': typeof ApiInviteIdAcceptRoute
   '/api/runs/$id/diff': typeof ApiRunsIdDiffRoute
   '/projects/$id/runs/$runId': typeof ProjectsIdRunsRunIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/api/invite': typeof ApiInviteRouteWithChildren
   '/api/organizations': typeof ApiOrganizationsRoute
   '/api/projects': typeof ApiProjectsRouteWithChildren
   '/api/upload': typeof ApiUploadRoute
+  '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/invite/$id': typeof ApiInviteIdRouteWithChildren
   '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/runs/$id': typeof ApiRunsIdRouteWithChildren
   '/org/$slug/new-project': typeof OrgSlugNewProjectRoute
   '/projects/$id/api-keys': typeof ProjectsIdApiKeysRoute
   '/org/$slug': typeof OrgSlugIndexRoute
   '/projects/$id': typeof ProjectsIdIndexRoute
+  '/api/invite/$id/accept': typeof ApiInviteIdAcceptRoute
   '/api/runs/$id/diff': typeof ApiRunsIdDiffRoute
   '/projects/$id/runs/$runId': typeof ProjectsIdRunsRunIdRoute
 }
@@ -145,18 +177,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/api/invite': typeof ApiInviteRouteWithChildren
   '/api/organizations': typeof ApiOrganizationsRoute
   '/api/projects': typeof ApiProjectsRouteWithChildren
   '/api/upload': typeof ApiUploadRoute
+  '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/org/$slug': typeof OrgSlugRouteWithChildren
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/invite/$id': typeof ApiInviteIdRouteWithChildren
   '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/runs/$id': typeof ApiRunsIdRouteWithChildren
   '/org/$slug/new-project': typeof OrgSlugNewProjectRoute
   '/projects/$id/api-keys': typeof ProjectsIdApiKeysRoute
   '/org/$slug/': typeof OrgSlugIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
+  '/api/invite/$id/accept': typeof ApiInviteIdAcceptRoute
   '/api/runs/$id/diff': typeof ApiRunsIdDiffRoute
   '/projects/$id/runs/$runId': typeof ProjectsIdRunsRunIdRoute
 }
@@ -165,52 +201,64 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/api/invite'
     | '/api/organizations'
     | '/api/projects'
     | '/api/upload'
+    | '/invite/$invitationId'
     | '/org/$slug'
     | '/projects/$id'
     | '/api/auth/$'
+    | '/api/invite/$id'
     | '/api/projects/$id'
     | '/api/runs/$id'
     | '/org/$slug/new-project'
     | '/projects/$id/api-keys'
     | '/org/$slug/'
     | '/projects/$id/'
+    | '/api/invite/$id/accept'
     | '/api/runs/$id/diff'
     | '/projects/$id/runs/$runId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/api/invite'
     | '/api/organizations'
     | '/api/projects'
     | '/api/upload'
+    | '/invite/$invitationId'
     | '/api/auth/$'
+    | '/api/invite/$id'
     | '/api/projects/$id'
     | '/api/runs/$id'
     | '/org/$slug/new-project'
     | '/projects/$id/api-keys'
     | '/org/$slug'
     | '/projects/$id'
+    | '/api/invite/$id/accept'
     | '/api/runs/$id/diff'
     | '/projects/$id/runs/$runId'
   id:
     | '__root__'
     | '/'
     | '/login'
+    | '/api/invite'
     | '/api/organizations'
     | '/api/projects'
     | '/api/upload'
+    | '/invite/$invitationId'
     | '/org/$slug'
     | '/projects/$id'
     | '/api/auth/$'
+    | '/api/invite/$id'
     | '/api/projects/$id'
     | '/api/runs/$id'
     | '/org/$slug/new-project'
     | '/projects/$id/api-keys'
     | '/org/$slug/'
     | '/projects/$id/'
+    | '/api/invite/$id/accept'
     | '/api/runs/$id/diff'
     | '/projects/$id/runs/$runId'
   fileRoutesById: FileRoutesById
@@ -218,9 +266,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  ApiInviteRoute: typeof ApiInviteRouteWithChildren
   ApiOrganizationsRoute: typeof ApiOrganizationsRoute
   ApiProjectsRoute: typeof ApiProjectsRouteWithChildren
   ApiUploadRoute: typeof ApiUploadRoute
+  InviteInvitationIdRoute: typeof InviteInvitationIdRoute
   OrgSlugRoute: typeof OrgSlugRouteWithChildren
   ProjectsIdRoute: typeof ProjectsIdRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -257,6 +307,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrgSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite/$invitationId': {
+      id: '/invite/$invitationId'
+      path: '/invite/$invitationId'
+      fullPath: '/invite/$invitationId'
+      preLoaderRoute: typeof InviteInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/upload': {
       id: '/api/upload'
       path: '/api/upload'
@@ -276,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/api/organizations'
       fullPath: '/api/organizations'
       preLoaderRoute: typeof ApiOrganizationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invite': {
+      id: '/api/invite'
+      path: '/api/invite'
+      fullPath: '/api/invite'
+      preLoaderRoute: typeof ApiInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$id/': {
@@ -320,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProjectsIdRouteImport
       parentRoute: typeof ApiProjectsRoute
     }
+    '/api/invite/$id': {
+      id: '/api/invite/$id'
+      path: '/$id'
+      fullPath: '/api/invite/$id'
+      preLoaderRoute: typeof ApiInviteIdRouteImport
+      parentRoute: typeof ApiInviteRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -341,8 +412,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRunsIdDiffRouteImport
       parentRoute: typeof ApiRunsIdRoute
     }
+    '/api/invite/$id/accept': {
+      id: '/api/invite/$id/accept'
+      path: '/accept'
+      fullPath: '/api/invite/$id/accept'
+      preLoaderRoute: typeof ApiInviteIdAcceptRouteImport
+      parentRoute: typeof ApiInviteIdRoute
+    }
   }
 }
+
+interface ApiInviteIdRouteChildren {
+  ApiInviteIdAcceptRoute: typeof ApiInviteIdAcceptRoute
+}
+
+const ApiInviteIdRouteChildren: ApiInviteIdRouteChildren = {
+  ApiInviteIdAcceptRoute: ApiInviteIdAcceptRoute,
+}
+
+const ApiInviteIdRouteWithChildren = ApiInviteIdRoute._addFileChildren(
+  ApiInviteIdRouteChildren,
+)
+
+interface ApiInviteRouteChildren {
+  ApiInviteIdRoute: typeof ApiInviteIdRouteWithChildren
+}
+
+const ApiInviteRouteChildren: ApiInviteRouteChildren = {
+  ApiInviteIdRoute: ApiInviteIdRouteWithChildren,
+}
+
+const ApiInviteRouteWithChildren = ApiInviteRoute._addFileChildren(
+  ApiInviteRouteChildren,
+)
 
 interface ApiProjectsRouteChildren {
   ApiProjectsIdRoute: typeof ApiProjectsIdRoute
@@ -400,9 +502,11 @@ const ApiRunsIdRouteWithChildren = ApiRunsIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  ApiInviteRoute: ApiInviteRouteWithChildren,
   ApiOrganizationsRoute: ApiOrganizationsRoute,
   ApiProjectsRoute: ApiProjectsRouteWithChildren,
   ApiUploadRoute: ApiUploadRoute,
+  InviteInvitationIdRoute: InviteInvitationIdRoute,
   OrgSlugRoute: OrgSlugRouteWithChildren,
   ProjectsIdRoute: ProjectsIdRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

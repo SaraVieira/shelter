@@ -1,0 +1,24 @@
+name: "Coverage Tracker"
+description: "Upload coverage reports and post PR comments"
+inputs:
+  url:
+    description: "Coverage Tracker app URL"
+    required: true
+  project-id:
+    description: "Project ID"
+    required: true
+  api-key:
+    description: "Coverage Tracker API key"
+    required: true
+  github-token:
+    description: "GitHub token for PR comments (defaults to GITHUB_TOKEN)"
+    required: false
+  coverage-summary-path:
+    description: "Path to coverage summary JSON"
+    required: false
+  lcov-path:
+    description: "Path to LCOV report"
+    required: false
+runs:
+  using: "node20"
+  main: "dist/index.js"

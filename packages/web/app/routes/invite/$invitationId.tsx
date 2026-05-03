@@ -1,12 +1,18 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 export const Route = createFileRoute("/invite/$invitationId")({
+  loader: async ({ params }) => {
+    const res = await fetch(`/api/invite/${params.invitationId}`);
+    if (!res.ok) throw new Error("Invitation not found or expired");
+    return res.json();
+  },
   component: InvitePage,
 });
 
 function InvitePage() {
+  const invitation = Route.useLoaderData();
   const { invitationId } = Route.useParams();
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
@@ -36,10 +42,10 @@ function InvitePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
+      <div className="text-center max-w-md">
         <h1 className="text-2xl font-bold mb-2">Organization Invitation</h1>
         <p className="text-muted-foreground mb-4">
-          You've been invited to join an organization on Coverage Tracker.
+          You've been invited to join <strong>{invitation.organization?.name || "an organization"}</strong> on Coverage Tracker.
         </p>
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
         <Button onClick={handleAccept}>Accept Invitation</Button>

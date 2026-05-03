@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { apiUrl } from "../../lib/api";
+import { useState } from "react";
 
 export const Route = createFileRoute("/org/$slug/")({
   loader: async ({ params, context }) => {
@@ -26,6 +28,32 @@ export const Route = createFileRoute("/org/$slug/")({
 function OrgPage() {
   const { slug } = Route.useParams();
   const { org, projects } = Route.useLoaderData();
+  const [email, setEmail] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteError, setInviteError] = useState("");
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setInviteError("");
+    setInviteLink("");
+    if (!email.trim()) return;
+
+    const res = await fetch("/api/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, email: email.trim() }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setInviteError(data.error || "Failed to create invitation");
+      return;
+    }
+
+    const data = await res.json();
+    setInviteLink(data.inviteLink);
+    setEmail("");
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,6 +64,26 @@ function OrgPage() {
       </header>
       <main className="mx-auto max-w-4xl p-6 space-y-6">
         <h1 className="text-2xl font-bold">{org.name}</h1>
+
+        <Card>
+          <CardHeader><CardTitle>Invite Members</CardTitle></CardHeader>
+          <CardContent>
+            <form onSubmit={handleInvite} className="flex gap-2">
+              <Input placeholder="user@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+              <Button type="submit">Generate Invite</Button>
+            </form>
+            {inviteError && <p className="text-sm text-red-600 mt-2">{inviteError}</p>}
+            {inviteLink && (
+              <div className="mt-3 p-3 bg-muted rounded-md">
+                <p className="text-xs text-muted-foreground mb-1">Share this link:</p>
+                <div className="flex gap-2">
+                  <Input value={inviteLink} readOnly onClick={(e) => (e.target as HTMLInputElement).select()} />
+                  <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(inviteLink)}>Copy</Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">

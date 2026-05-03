@@ -1,5 +1,5 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { auth } from "../../server/auth";
+import { createFileRoute } from "@tanstack/react-router";
+import { auth } from "../../../../server/auth";
 
 export const Route = createFileRoute("/api/invite/$id/accept")({
   server: {

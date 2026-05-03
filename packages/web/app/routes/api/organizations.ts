@@ -20,7 +20,12 @@ export const Route = createFileRoute("/api/organizations")({
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const body = await request.json() as { name: string; slug?: string };
+        let body: { name: string; slug?: string };
+        try {
+          body = await request.json();
+        } catch {
+          return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+        }
         if (!body.name?.trim()) {
           return Response.json({ error: "Organization name is required" }, { status: 400 });
         }

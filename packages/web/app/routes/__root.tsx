@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { getSession } from "../server/auth-helpers";
 import "../app.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 type SessionResult = Awaited<ReturnType<typeof getSession>>;
 
@@ -27,12 +28,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        <Outlet />
+        <ThemeProvider defaultTheme="system" storageKey="theme">
+          <Outlet />
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>

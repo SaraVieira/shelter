@@ -17,7 +17,9 @@ export const Route = createFileRoute("/org/$slug/")({
     ]);
     if (!orgsRes.ok) throw new Error("Failed to load organizations");
     if (!projectsRes.ok) throw new Error("Failed to load projects");
-    const [orgs, projects] = await Promise.all([orgsRes.json(), projectsRes.json()]);
+    const [orgsData, projectsData] = await Promise.all([orgsRes.json(), projectsRes.json()]);
+    const orgs = orgsData.data;
+    const projects = projectsData.data;
     const org = orgs.find((o: any) => o.slug === params.slug);
     if (!org) throw new Error("Organization not found");
 

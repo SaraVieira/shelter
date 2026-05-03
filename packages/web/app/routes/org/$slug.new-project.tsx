@@ -10,7 +10,8 @@ export const Route = createFileRoute("/org/$slug/new-project")({
     const headers: Record<string, string> = {};
     if (context.auth?.cookie) headers.cookie = context.auth.cookie;
     const res = await fetch(apiUrl("/api/organizations"), { headers });
-    const orgs = await res.json();
+    const orgsData = await res.json();
+    const orgs = orgsData.data;
     return { cookie: context.auth?.cookie || "", orgs };
   },
   component: NewProjectPage,

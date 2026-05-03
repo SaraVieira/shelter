@@ -6,9 +6,9 @@ export function apiUrl(path: string) {
 
 export const fetchFromAPI = async (path: string, options?: RequestInit) => {
   const res = await fetch(apiUrl(path), options);
+  const json = await res.json();
   if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || "API request failed");
+    throw new Error(json.error?.message || json.error || "API request failed");
   }
-  return res.json();
+  return json.data;
 };

@@ -21,3 +21,5 @@ export const auth = betterAuth({
   },
   plugins: [apiKey(), organization(), tanstackStartCookies()],
 });
+
+import "./cron";

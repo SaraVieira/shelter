@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "../../server/auth";
 import { db } from "../../db";
-import { runs, type FileInfo, type DiffData } from "../../db/schema";
+import { runs, projects, type FileInfo, type DiffData } from "../../db/schema";
 import { parseJsonCoverage } from "../../server/parsers/json.parser";
 import { parseLcov } from "../../server/parsers/lcov.parser";
 import { computeDiff, computeFileDiff, FileChange } from "../../server/diff/coverage.diff";
@@ -103,6 +103,23 @@ export const Route = createFileRoute("/api/upload")({
 
           const formData = await request.formData();
           const projectId = formData.get("project_id") as string;
+
+          // Validate project exists and API key belongs to project's organization
+          const project = await db.query.projects.findFirst({
+            where: eq(projects.id, projectId),
+          });
+
+          if (!project) {
+            return Response.json({ error: "Project not found" }, { status: 404 });
+          }
+
+          // Verify API key belongs to the organization that owns this project
+          if (keyResult.key.referenceId !== project.organizationId) {
+            return Response.json(
+              { error: "API key is not authorized for this project" },
+              { status: 403 }
+            );
+          }
           const commitSha = formData.get("commit_sha") as string;
           const branch = formData.get("branch") as string;
           const prNumber = formData.get("pr_number") as string | null;

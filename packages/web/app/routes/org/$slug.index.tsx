@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiUrl } from "../../lib/api";
+import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
 
 export const Route = createFileRoute("/org/$slug/")({
@@ -28,32 +29,31 @@ export const Route = createFileRoute("/org/$slug/")({
 function OrgPage() {
   const { slug } = Route.useParams();
   const { org, projects } = Route.useLoaderData();
-  const [email, setEmail] = useState("");
   const [inviteLink, setInviteLink] = useState("");
-  const [inviteError, setInviteError] = useState("");
 
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
-    setInviteError("");
-    setInviteLink("");
-    if (!email.trim()) return;
+  const form = useForm({
+    defaultValues: {
+      email: "",
+    },
+    onSubmit: async ({ value }) => {
+      setInviteLink("");
+      
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, email: value.email.trim() }),
+      });
 
-    const res = await fetch("/api/invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, email: email.trim() }),
-    });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create invitation");
+      }
 
-    if (!res.ok) {
       const data = await res.json();
-      setInviteError(data.error || "Failed to create invitation");
-      return;
-    }
-
-    const data = await res.json();
-    setInviteLink(data.inviteLink);
-    setEmail("");
-  }
+      setInviteLink(data.inviteLink);
+      form.reset();
+    },
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,11 +68,59 @@ function OrgPage() {
         <Card>
           <CardHeader><CardTitle>Invite Members</CardTitle></CardHeader>
           <CardContent>
-            <form onSubmit={handleInvite} className="flex gap-2">
-              <Input placeholder="user@example.com" value={email} onChange={e => setEmail(e.target.value)} />
-              <Button type="submit">Generate Invite</Button>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                form.handleSubmit();
+              }}
+              className="flex gap-2"
+            >
+              <form.Field
+                name="email"
+                validators={{
+                  onChange: ({ value }) =>
+                    !value
+                      ? "Email is required"
+                      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+                      ? "Invalid email format"
+                      : undefined,
+                }}
+              >
+                {(field) => (
+                  <div className="flex-1">
+                    <Input
+                      placeholder="user@example.com"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600 mt-1">{field.state.meta.errors[0]}</p>
+                    )}
+                  </div>
+                )}
+              </form.Field>
+              <form.Subscribe
+                selector={(state) => [state.canSubmit, state.isSubmitting]}
+              >
+                {([canSubmit, isSubmitting]) => (
+                  <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                    {isSubmitting ? "Generating..." : "Generate Invite"}
+                  </Button>
+                )}
+              </form.Subscribe>
             </form>
-            {inviteError && <p className="text-sm text-red-600 mt-2">{inviteError}</p>}
+            
+            <form.Subscribe
+              selector={(state) => state.errorMap}
+            >
+              {(errorMap) =>
+                errorMap && typeof errorMap === 'object' && errorMap.onSubmit ? (
+                  <p className="text-sm text-red-600 mt-2">{(errorMap.onSubmit as Error).message}</p>
+                ) : null
+              }
+            </form.Subscribe>
+            
             {inviteLink && (
               <div className="mt-3 p-3 bg-muted rounded-md">
                 <p className="text-xs text-muted-foreground mb-1">Share this link:</p>

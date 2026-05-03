@@ -1,9 +1,35 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from "lucide-react";
+import { ArrowUpIcon, ArrowDownIcon, MinusIcon, ArrowUpDown } from "lucide-react";
 import { apiUrl } from "@/lib/api";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  createColumnHelper,
+  SortingState,
+} from "@tanstack/react-table";
+import { useState } from "react";
+
+interface CoverageMetric {
+  metric: string;
+  pct: number;
+  base?: number;
+  prev?: number;
+}
+
+interface FileCoverage {
+  file: string;
+  lines: number;
+  branches: number;
+  functions: number;
+  statements: number;
+}
+
+const metricColumnHelper = createColumnHelper<CoverageMetric>();
+const fileColumnHelper = createColumnHelper<FileCoverage>();
 
 export const Route = createFileRoute("/projects/$id/runs/$runId")({
   loader: async ({ params, context }) => {
@@ -32,8 +58,172 @@ function DeltaRow({ delta }: { delta: number | undefined }) {
   );
 }
 
+function MetricsTable({ data }: { data: CoverageMetric[] }) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = [
+    metricColumnHelper.accessor("metric", {
+      header: "Metric",
+    }),
+    metricColumnHelper.accessor("pct", {
+      header: "Coverage",
+      cell: (info) => `${info.getValue()?.toFixed(1)}%`,
+    }),
+    metricColumnHelper.accessor("base", {
+      header: "vs Base",
+      cell: (info) => <DeltaRow delta={info.getValue()} />,
+    }),
+    metricColumnHelper.accessor("prev", {
+      header: "vs Previous",
+      cell: (info) => <DeltaRow delta={info.getValue()} />,
+    }),
+  ];
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <table className="w-full caption-bottom text-sm">
+      <thead className="[&_tr]:border-b">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
+            {headerGroup.headers.map((header) => (
+              <th
+                key={header.id}
+                className="h-10 px-2 text-left align-middle font-medium text-muted-foreground"
+              >
+                {header.isPlaceholder ? null : (
+                  <button
+                    className="flex items-center gap-1"
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getIsSorted() === "asc" ? (
+                      <ArrowUpIcon className="h-3 w-3" />
+                    ) : header.column.getIsSorted() === "desc" ? (
+                      <ArrowDownIcon className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </button>
+                )}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+      <tbody className="[&_tr:last-child]:border-0">
+        {table.getRowModel().rows.map((row) => (
+          <tr key={row.id} className="border-b transition-colors hover:bg-muted/50">
+            {row.getVisibleCells().map((cell) => (
+              <td key={cell.id} className="p-2 align-middle">
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function FileCoverageTable({ data }: { data: FileCoverage[] }) {
+  const [sorting, setSorting] = useState<SortingState>([{ id: "file", desc: false }]);
+
+  const columns = [
+    fileColumnHelper.accessor("file", {
+      header: "File",
+      cell: (info) => <span className="font-mono text-sm">{info.getValue()}</span>,
+    }),
+    fileColumnHelper.accessor("lines", {
+      header: "Lines",
+      cell: (info) => `${info.getValue()?.toFixed(1)}%`,
+    }),
+    fileColumnHelper.accessor("branches", {
+      header: "Branches",
+      cell: (info) => `${info.getValue()?.toFixed(1)}%`,
+    }),
+    fileColumnHelper.accessor("functions", {
+      header: "Functions",
+      cell: (info) => `${info.getValue()?.toFixed(1)}%`,
+    }),
+    fileColumnHelper.accessor("statements", {
+      header: "Statements",
+      cell: (info) => `${info.getValue()?.toFixed(1)}%`,
+    }),
+  ];
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <table className="w-full caption-bottom text-sm">
+      <thead className="[&_tr]:border-b">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
+            {headerGroup.headers.map((header) => (
+              <th
+                key={header.id}
+                className="h-10 px-2 text-left align-middle font-medium text-muted-foreground"
+              >
+                {header.isPlaceholder ? null : (
+                  <button
+                    className="flex items-center gap-1"
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getIsSorted() === "asc" ? (
+                      <ArrowUpIcon className="h-3 w-3" />
+                    ) : header.column.getIsSorted() === "desc" ? (
+                      <ArrowDownIcon className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </button>
+                )}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+      <tbody className="[&_tr:last-child]:border-0">
+        {table.getRowModel().rows.map((row) => (
+          <tr key={row.id} className="border-b transition-colors hover:bg-muted/50">
+            {row.getVisibleCells().map((cell) => (
+              <td key={cell.id} className="p-2 align-middle">
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function RunDetailPage() {
   const run = Route.useLoaderData();
+
+  const metricsData: CoverageMetric[] = [
+    { metric: "Lines", pct: run.linesPct, base: run.diffVsBase?.linesDelta, prev: run.diffVsPrevious?.linesDelta },
+    { metric: "Branches", pct: run.branchesPct, base: run.diffVsBase?.branchesDelta, prev: run.diffVsPrevious?.branchesDelta },
+    { metric: "Functions", pct: run.functionsPct, base: run.diffVsBase?.functionsDelta, prev: run.diffVsPrevious?.functionsDelta },
+    { metric: "Statements", pct: run.statementsPct, base: run.diffVsBase?.statementsDelta, prev: run.diffVsPrevious?.statementsDelta },
+  ];
+
+  const fileCoverageData: FileCoverage[] = run.fileCoverage || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,61 +250,16 @@ function RunDetailPage() {
           <Card>
             <CardHeader><CardTitle>Overall Coverage</CardTitle></CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Metric</TableHead>
-                    <TableHead>Coverage</TableHead>
-                    <TableHead>vs Base</TableHead>
-                    <TableHead>vs Previous</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[
-                    { metric: "Lines", pct: run.linesPct, base: run.diffVsBase?.linesDelta, prev: run.diffVsPrevious?.linesDelta },
-                    { metric: "Branches", pct: run.branchesPct, base: run.diffVsBase?.branchesDelta, prev: run.diffVsPrevious?.branchesDelta },
-                    { metric: "Functions", pct: run.functionsPct, base: run.diffVsBase?.functionsDelta, prev: run.diffVsPrevious?.functionsDelta },
-                    { metric: "Statements", pct: run.statementsPct, base: run.diffVsBase?.statementsDelta, prev: run.diffVsPrevious?.statementsDelta },
-                  ].map((row) => (
-                    <TableRow key={row.metric}>
-                      <TableCell>{row.metric}</TableCell>
-                      <TableCell>{row.pct?.toFixed(1)}%</TableCell>
-                      <TableCell><DeltaRow delta={row.base} /></TableCell>
-                      <TableCell><DeltaRow delta={row.prev} /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <MetricsTable data={metricsData} />
             </CardContent>
           </Card>
         </div>
 
-        {run.fileCoverage && run.fileCoverage.length > 0 && (
+        {fileCoverageData.length > 0 && (
           <Card>
             <CardHeader><CardTitle>File Coverage</CardTitle></CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>File</TableHead>
-                    <TableHead>Lines</TableHead>
-                    <TableHead>Branches</TableHead>
-                    <TableHead>Functions</TableHead>
-                    <TableHead>Statements</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {run.fileCoverage.map((f: any) => (
-                    <TableRow key={f.file}>
-                      <TableCell className="font-mono text-sm">{f.file}</TableCell>
-                      <TableCell>{f.lines?.toFixed(1)}%</TableCell>
-                      <TableCell>{f.branches?.toFixed(1)}%</TableCell>
-                      <TableCell>{f.functions?.toFixed(1)}%</TableCell>
-                      <TableCell>{f.statements?.toFixed(1)}%</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <FileCoverageTable data={fileCoverageData} />
             </CardContent>
           </Card>
         )}

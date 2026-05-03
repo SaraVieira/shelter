@@ -1,9 +1,43 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "../../../../server/auth";
 import { db } from "../../../../db";
-import { runs } from "../../../../db/schema";
+import { runs, projects } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 import { computeDiff, computeFileDiff } from "../../../../server/diff/coverage.diff";
+
+async function checkRunAccess(request: Request, runId: string): Promise<{ run: typeof runs.$inferSelect; hasAccess: true } | { hasAccess: false; response: Response }> {
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session?.user) {
+    return { hasAccess: false, response: Response.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+
+  const run = await db.query.runs.findFirst({
+    where: eq(runs.id, runId),
+  });
+
+  if (!run) {
+    return { hasAccess: false, response: Response.json({ error: "Not found" }, { status: 404 }) };
+  }
+
+  // Get the project to check organization access
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, run.projectId),
+  });
+
+  if (!project) {
+    return { hasAccess: false, response: Response.json({ error: "Not found" }, { status: 404 }) };
+  }
+
+  // Check if user belongs to the organization that owns this project
+  const userOrgs = await auth.api.listOrganizations({ headers: request.headers });
+  const hasAccess = userOrgs.some((org: any) => org.id === project.organizationId);
+
+  if (!hasAccess) {
+    return { hasAccess: false, response: Response.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+
+  return { run, hasAccess: true };
+}
 
 interface RunDiffResponse {
   currentRun: {
@@ -46,14 +80,10 @@ export const Route = createFileRoute("/api/runs/$id/diff")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-
-        const currentRun = await db.query.runs.findFirst({
-          where: eq(runs.id, params.id),
-        });
-
-        if (!currentRun) return Response.json({ error: "Not found" }, { status: 404 });
+        // Check access to current run
+        const currentAccess = await checkRunAccess(request, params.id);
+        if (!currentAccess.hasAccess) return currentAccess.response;
+        const currentRun = currentAccess.run;
 
         const url = new URL(request.url);
         const comparedRunId = url.searchParams.get("comparedRunId");
@@ -63,9 +93,10 @@ export const Route = createFileRoute("/api/runs/$id/diff")({
         let fileDiff: RunDiffResponse["fileDiff"] = [];
 
         if (comparedRunId) {
-          comparedRun = await db.query.runs.findFirst({
-            where: eq(runs.id, comparedRunId),
-          });
+          // Check access to compared run as well
+          const comparedAccess = await checkRunAccess(request, comparedRunId);
+          if (!comparedAccess.hasAccess) return comparedAccess.response;
+          comparedRun = comparedAccess.run;
 
           if (comparedRun) {
             diffVsCompared = computeDiff(

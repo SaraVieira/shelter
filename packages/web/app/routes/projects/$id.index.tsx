@@ -2,10 +2,29 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
+import { ArrowUpIcon, ArrowDownIcon, ArrowUpDown } from "lucide-react";
 import { apiUrl } from "../../lib/api";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  createColumnHelper,
+  SortingState,
+} from "@tanstack/react-table";
+import { useState } from "react";
+
+interface Run {
+  id: string;
+  uploadedAt: string;
+  branch: string;
+  linesPct: number;
+  branchesPct: number;
+  commitSha: string;
+}
+
+const columnHelper = createColumnHelper<Run>();
 
 export const Route = createFileRoute("/projects/$id/")({
   loader: async ({ params, context }) => {
@@ -22,6 +41,106 @@ function CoverageIcon({ delta }: { delta: number }) {
   if (delta > 0) return <ArrowUpIcon className="h-3 w-3 text-green-600" />;
   if (delta < 0) return <ArrowDownIcon className="h-3 w-3 text-red-600" />;
   return null;
+}
+
+function RunsTable({ data, projectId }: { data: Run[]; projectId: string }) {
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "uploadedAt", desc: true },
+  ]);
+
+  const columns = [
+    columnHelper.accessor("uploadedAt", {
+      header: "Date",
+      cell: (info) => (
+        <Link
+          to="/projects/$id/runs/$runId"
+          params={{ id: projectId, runId: info.row.original.id }}
+          className="text-primary hover:underline"
+        >
+          {new Date(info.getValue()).toLocaleDateString()}
+        </Link>
+      ),
+    }),
+    columnHelper.accessor("branch", {
+      header: "Branch",
+      cell: (info) => <Badge variant="secondary">{info.getValue()}</Badge>,
+    }),
+    columnHelper.accessor("linesPct", {
+      header: "Lines",
+      cell: (info) => `${info.getValue()?.toFixed(1)}%`,
+    }),
+    columnHelper.accessor("branchesPct", {
+      header: "Branches",
+      cell: (info) => `${info.getValue()?.toFixed(1)}%`,
+    }),
+    columnHelper.accessor("commitSha", {
+      header: "Commit",
+      cell: (info) => (
+        <span className="font-mono text-xs">{info.getValue().slice(0, 7)}</span>
+      ),
+    }),
+  ];
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <table className="w-full caption-bottom text-sm">
+      <thead className="[&_tr]:border-b">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+            {headerGroup.headers.map((header) => (
+              <th
+                key={header.id}
+                className="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+              >
+                {header.isPlaceholder ? null : (
+                  <button
+                    className="flex items-center gap-1"
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getIsSorted() === "asc" ? (
+                      <ArrowUpIcon className="h-3 w-3" />
+                    ) : header.column.getIsSorted() === "desc" ? (
+                      <ArrowDownIcon className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </button>
+                )}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+      <tbody className="[&_tr:last-child]:border-0">
+        {table.getRowModel().rows.map((row) => (
+          <tr
+            key={row.id}
+            className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+          >
+            {row.getVisibleCells().map((cell) => (
+              <td
+                key={cell.id}
+                className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+              >
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 function ProjectPage() {
@@ -103,38 +222,7 @@ function ProjectPage() {
         <Card>
           <CardHeader><CardTitle>Recent Runs</CardTitle></CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Branch</TableHead>
-                  <TableHead>Lines</TableHead>
-                  <TableHead>Branches</TableHead>
-                  <TableHead>Commit</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(timeline || []).map((run: any) => (
-                  <TableRow key={run.id}>
-                    <TableCell>
-                      <Link
-                        to="/projects/$id/runs/$runId"
-                        params={{ id: project.id, runId: run.id }}
-                        className="text-primary hover:underline"
-                      >
-                        {new Date(run.uploadedAt).toLocaleDateString()}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{run.branch}</Badge>
-                    </TableCell>
-                    <TableCell>{run.linesPct?.toFixed(1)}%</TableCell>
-                    <TableCell>{run.branchesPct?.toFixed(1)}%</TableCell>
-                    <TableCell className="font-mono text-xs">{run.commitSha.slice(0, 7)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <RunsTable data={timeline || []} projectId={project.id} />
           </CardContent>
         </Card>
       </main>

@@ -22,9 +22,10 @@ export async function runRetention() {
   const deleteCutoffDate = new Date(now);
   deleteCutoffDate.setDate(deleteCutoffDate.getDate() - fullDays);
 
-  const deletedCount = await db
+  const deletedRows = await db
     .delete(runs)
-    .where(lte(runs.uploadedAt, deleteCutoffDate));
+    .where(lte(runs.uploadedAt, deleteCutoffDate))
+    .returning({ id: runs.id });
 
-  console.log(`Deleted ${deletedCount.count || 0} runs older than ${fullDays} days`);
+  console.log(`Deleted ${deletedRows.length} runs older than ${fullDays} days`);
 }

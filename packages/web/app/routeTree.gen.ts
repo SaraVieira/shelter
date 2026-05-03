@@ -28,6 +28,7 @@ import { Route as ApiInviteIdRouteImport } from './routes/api/invite/$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProjectsIdRunsRunIdRouteImport } from './routes/projects/$id/runs/$runId'
 import { Route as ApiRunsIdDiffRouteImport } from './routes/api/runs/$id/diff'
+import { Route as ApiProjectsIdApiKeyRouteImport } from './routes/api/projects/$id/api-key'
 import { Route as ApiInviteIdAcceptRouteImport } from './routes/api/invite/$id/accept'
 
 const LoginRoute = LoginRouteImport.update({
@@ -125,6 +126,11 @@ const ApiRunsIdDiffRoute = ApiRunsIdDiffRouteImport.update({
   path: '/diff',
   getParentRoute: () => ApiRunsIdRoute,
 } as any)
+const ApiProjectsIdApiKeyRoute = ApiProjectsIdApiKeyRouteImport.update({
+  id: '/api-key',
+  path: '/api-key',
+  getParentRoute: () => ApiProjectsIdRoute,
+} as any)
 const ApiInviteIdAcceptRoute = ApiInviteIdAcceptRouteImport.update({
   id: '/accept',
   path: '/accept',
@@ -143,13 +149,14 @@ export interface FileRoutesByFullPath {
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/invite/$id': typeof ApiInviteIdRouteWithChildren
-  '/api/projects/$id': typeof ApiProjectsIdRoute
+  '/api/projects/$id': typeof ApiProjectsIdRouteWithChildren
   '/api/runs/$id': typeof ApiRunsIdRouteWithChildren
   '/org/$slug/new-project': typeof OrgSlugNewProjectRoute
   '/projects/$id/api-keys': typeof ProjectsIdApiKeysRoute
   '/org/$slug/': typeof OrgSlugIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
   '/api/invite/$id/accept': typeof ApiInviteIdAcceptRoute
+  '/api/projects/$id/api-key': typeof ApiProjectsIdApiKeyRoute
   '/api/runs/$id/diff': typeof ApiRunsIdDiffRoute
   '/projects/$id/runs/$runId': typeof ProjectsIdRunsRunIdRoute
 }
@@ -163,13 +170,14 @@ export interface FileRoutesByTo {
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/invite/$id': typeof ApiInviteIdRouteWithChildren
-  '/api/projects/$id': typeof ApiProjectsIdRoute
+  '/api/projects/$id': typeof ApiProjectsIdRouteWithChildren
   '/api/runs/$id': typeof ApiRunsIdRouteWithChildren
   '/org/$slug/new-project': typeof OrgSlugNewProjectRoute
   '/projects/$id/api-keys': typeof ProjectsIdApiKeysRoute
   '/org/$slug': typeof OrgSlugIndexRoute
   '/projects/$id': typeof ProjectsIdIndexRoute
   '/api/invite/$id/accept': typeof ApiInviteIdAcceptRoute
+  '/api/projects/$id/api-key': typeof ApiProjectsIdApiKeyRoute
   '/api/runs/$id/diff': typeof ApiRunsIdDiffRoute
   '/projects/$id/runs/$runId': typeof ProjectsIdRunsRunIdRoute
 }
@@ -186,13 +194,14 @@ export interface FileRoutesById {
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/invite/$id': typeof ApiInviteIdRouteWithChildren
-  '/api/projects/$id': typeof ApiProjectsIdRoute
+  '/api/projects/$id': typeof ApiProjectsIdRouteWithChildren
   '/api/runs/$id': typeof ApiRunsIdRouteWithChildren
   '/org/$slug/new-project': typeof OrgSlugNewProjectRoute
   '/projects/$id/api-keys': typeof ProjectsIdApiKeysRoute
   '/org/$slug/': typeof OrgSlugIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
   '/api/invite/$id/accept': typeof ApiInviteIdAcceptRoute
+  '/api/projects/$id/api-key': typeof ApiProjectsIdApiKeyRoute
   '/api/runs/$id/diff': typeof ApiRunsIdDiffRoute
   '/projects/$id/runs/$runId': typeof ProjectsIdRunsRunIdRoute
 }
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/org/$slug/'
     | '/projects/$id/'
     | '/api/invite/$id/accept'
+    | '/api/projects/$id/api-key'
     | '/api/runs/$id/diff'
     | '/projects/$id/runs/$runId'
   fileRoutesByTo: FileRoutesByTo
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/org/$slug'
     | '/projects/$id'
     | '/api/invite/$id/accept'
+    | '/api/projects/$id/api-key'
     | '/api/runs/$id/diff'
     | '/projects/$id/runs/$runId'
   id:
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/org/$slug/'
     | '/projects/$id/'
     | '/api/invite/$id/accept'
+    | '/api/projects/$id/api-key'
     | '/api/runs/$id/diff'
     | '/projects/$id/runs/$runId'
   fileRoutesById: FileRoutesById
@@ -412,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRunsIdDiffRouteImport
       parentRoute: typeof ApiRunsIdRoute
     }
+    '/api/projects/$id/api-key': {
+      id: '/api/projects/$id/api-key'
+      path: '/api-key'
+      fullPath: '/api/projects/$id/api-key'
+      preLoaderRoute: typeof ApiProjectsIdApiKeyRouteImport
+      parentRoute: typeof ApiProjectsIdRoute
+    }
     '/api/invite/$id/accept': {
       id: '/api/invite/$id/accept'
       path: '/accept'
@@ -446,12 +465,24 @@ const ApiInviteRouteWithChildren = ApiInviteRoute._addFileChildren(
   ApiInviteRouteChildren,
 )
 
+interface ApiProjectsIdRouteChildren {
+  ApiProjectsIdApiKeyRoute: typeof ApiProjectsIdApiKeyRoute
+}
+
+const ApiProjectsIdRouteChildren: ApiProjectsIdRouteChildren = {
+  ApiProjectsIdApiKeyRoute: ApiProjectsIdApiKeyRoute,
+}
+
+const ApiProjectsIdRouteWithChildren = ApiProjectsIdRoute._addFileChildren(
+  ApiProjectsIdRouteChildren,
+)
+
 interface ApiProjectsRouteChildren {
-  ApiProjectsIdRoute: typeof ApiProjectsIdRoute
+  ApiProjectsIdRoute: typeof ApiProjectsIdRouteWithChildren
 }
 
 const ApiProjectsRouteChildren: ApiProjectsRouteChildren = {
-  ApiProjectsIdRoute: ApiProjectsIdRoute,
+  ApiProjectsIdRoute: ApiProjectsIdRouteWithChildren,
 }
 
 const ApiProjectsRouteWithChildren = ApiProjectsRoute._addFileChildren(

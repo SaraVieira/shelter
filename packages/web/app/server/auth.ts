@@ -3,7 +3,32 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { apiKey } from "@better-auth/api-key";
 import { organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { createAccessControl } from "better-auth/plugins/access";
 import { db } from "../db";
+
+// Define access control statements for organization roles
+const statements = {
+  apiKey: ["create", "read", "update", "delete"],
+  project: ["create", "read", "update", "delete"],
+} as const;
+
+const ac = createAccessControl(statements);
+
+// Define roles with their permissions
+const ownerRole = ac.newRole({
+  apiKey: ["create", "read", "update", "delete"],
+  project: ["create", "read", "update", "delete"],
+});
+
+const adminRole = ac.newRole({
+  apiKey: ["create", "read", "update", "delete"],
+  project: ["create", "read", "update", "delete"],
+});
+
+const memberRole = ac.newRole({
+  apiKey: ["create", "read"],
+  project: ["create", "read"],
+});
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
@@ -19,7 +44,22 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: false,
   },
-  plugins: [apiKey(), organization(), tanstackStartCookies()],
+  plugins: [
+    apiKey({
+      // Configure API keys to be organization-owned
+      // This makes the plugin properly handle organizationId
+      references: "organization",
+    }), 
+    organization({
+      ac,
+      roles: {
+        owner: ownerRole,
+        admin: adminRole,
+        member: memberRole,
+      },
+    }), 
+    tanstackStartCookies()
+  ],
 });
 
 import "./cron";

@@ -5,13 +5,22 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
+import { apiUrl } from "@/lib/api";
 
 export const Route = createFileRoute("/projects/$id/api-keys")({
+  loader: async ({ params, context }) => {
+    const h: Record<string, string> = {};
+    if (context.auth?.cookie) h.cookie = context.auth.cookie;
+    const res = await fetch(apiUrl(`/api/projects/${params.id}`), { headers: h });
+    if (!res.ok) throw new Error("Not found");
+    return res.json();
+  },
   component: ApiKeysPage,
 });
 
 function ApiKeysPage() {
   const { id } = Route.useParams();
+  const { project } = Route.useLoaderData();
   const [newKey, setNewKey] = useState("");
 
   const form = useForm({
@@ -19,18 +28,33 @@ function ApiKeysPage() {
       name: "",
     },
     onSubmit: async ({ value }) => {
-      const res = await fetch("/api/auth/api-key/create", {
+      console.log("[API KEYS] Creating key for project:", id);
+      
+      // Use our custom API endpoint that properly sets the organization referenceId
+      const res = await fetch(`/api/projects/${id}/api-key`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: value.name.trim() }),
+        headers: { 
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: value.name.trim(),
+        }),
       });
+
+      console.log("[API KEYS] Create response status:", res.status);
 
       if (!res.ok) {
         const data = await res.json();
+        console.error("[API KEYS] Create error:", data);
         throw new Error(data.error || "Failed to create API key");
       }
 
       const key = await res.json();
+      console.log("[API KEYS] Key created:", {
+        id: key.id,
+        name: key.name,
+        referenceId: key.referenceId,
+      });
       setNewKey(key.key);
       form.reset();
     },

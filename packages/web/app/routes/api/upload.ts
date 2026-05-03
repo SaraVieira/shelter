@@ -89,12 +89,20 @@ export const Route = createFileRoute("/api/upload")({
       POST: async ({ request }) => {
         try {
           const apiKey = request.headers.get("authorization")?.replace("Bearer ", "");
+          console.log("[UPLOAD] Received API key:", apiKey?.substring(0, 10) + "...");
+          
           if (!apiKey) {
             return Response.json({ error: "Missing API key" }, { status: 401 });
           }
 
           const keyResult = await auth.api.verifyApiKey({
             body: { key: apiKey },
+          });
+
+          console.log("[UPLOAD] Key verification result:", {
+            valid: keyResult.valid,
+            hasKey: !!keyResult.key,
+            referenceId: keyResult.key?.referenceId,
           });
 
           if (!keyResult.valid || !keyResult.key) {
@@ -104,9 +112,18 @@ export const Route = createFileRoute("/api/upload")({
           const formData = await request.formData();
           const projectId = formData.get("project_id") as string;
 
+          console.log("[UPLOAD] Project ID:", projectId);
+
           // Validate project exists and API key belongs to project's organization
           const project = await db.query.projects.findFirst({
             where: eq(projects.id, projectId),
+          });
+
+          console.log("[UPLOAD] Project lookup result:", {
+            found: !!project,
+            projectOrgId: project?.organizationId,
+            keyReferenceId: keyResult.key.referenceId,
+            match: project?.organizationId === keyResult.key.referenceId,
           });
 
           if (!project) {
@@ -115,11 +132,17 @@ export const Route = createFileRoute("/api/upload")({
 
           // Verify API key belongs to the organization that owns this project
           if (keyResult.key.referenceId !== project.organizationId) {
+            console.error("[UPLOAD] Authorization failed:", {
+              keyReferenceId: keyResult.key.referenceId,
+              projectOrgId: project.organizationId,
+            });
             return Response.json(
               { error: "API key is not authorized for this project" },
               { status: 403 }
             );
           }
+          
+          console.log("[UPLOAD] Authorization successful");
           const commitSha = formData.get("commit_sha") as string;
           const branch = formData.get("branch") as string;
           const prNumber = formData.get("pr_number") as string | null;

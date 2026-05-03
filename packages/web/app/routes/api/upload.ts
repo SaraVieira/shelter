@@ -4,7 +4,11 @@ import { db } from "../../db";
 import { runs, projects, type FileInfo, type DiffData } from "../../db/schema";
 import { parseJsonCoverage } from "../../server/parsers/json.parser";
 import { parseLcov } from "../../server/parsers/lcov.parser";
-import { computeDiff, computeFileDiff, FileChange } from "../../server/diff/coverage.diff";
+import {
+  computeDiff,
+  computeFileDiff,
+  FileChange,
+} from "../../server/diff/coverage.diff";
 import type { FileCoverageSummary } from "../../server/parsers/coverage.types";
 import { eq, desc, and, or, ne } from "drizzle-orm";
 
@@ -31,7 +35,9 @@ interface UploadResponse {
   filesChanged: FileChange[];
 }
 
-async function getBaseRun(projectId: string): Promise<typeof runs.$inferSelect | undefined> {
+async function getBaseRun(
+  projectId: string,
+): Promise<typeof runs.$inferSelect | undefined> {
   const baseBranches = ["main", "master"];
   const baseRuns = await db
     .select()
@@ -39,8 +45,8 @@ async function getBaseRun(projectId: string): Promise<typeof runs.$inferSelect |
     .where(
       and(
         eq(runs.projectId, projectId),
-        or(...baseBranches.map((b) => eq(runs.branch, b)))
-      )
+        or(...baseBranches.map((b) => eq(runs.branch, b))),
+      ),
     )
     .orderBy(desc(runs.uploadedAt))
     .limit(1);
@@ -51,7 +57,7 @@ async function getBaseRun(projectId: string): Promise<typeof runs.$inferSelect |
 async function getPreviousRun(
   projectId: string,
   branch: string,
-  excludeSha?: string
+  excludeSha?: string,
 ): Promise<typeof runs.$inferSelect | undefined> {
   const conditions = [eq(runs.projectId, projectId), eq(runs.branch, branch)];
   if (excludeSha) conditions.push(ne(runs.commitSha, excludeSha));
@@ -66,9 +72,7 @@ async function getPreviousRun(
   return prevRuns[0];
 }
 
-function runToFileCoverage(
-  run: typeof runs.$inferSelect
-): FileCoverageSummary {
+function runToFileCoverage(run: typeof runs.$inferSelect): FileCoverageSummary {
   const raw = run.fileCoverage;
   const fileCov: FileInfo[] = Array.isArray(raw) ? raw : [];
   const result: Record<string, any> = {};
@@ -88,9 +92,10 @@ export const Route = createFileRoute("/api/upload")({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const apiKey = request.headers.get("authorization")?.replace("Bearer ", "");
-          console.log("[UPLOAD] Received API key:", apiKey?.substring(0, 10) + "...");
-          
+          const apiKey = request.headers
+            .get("authorization")
+            ?.replace("Bearer ", "");
+
           if (!apiKey) {
             return Response.json({ error: "Missing API key" }, { status: 401 });
           }
@@ -99,35 +104,26 @@ export const Route = createFileRoute("/api/upload")({
             body: { key: apiKey },
           });
 
-          console.log("[UPLOAD] Key verification result:", {
-            valid: keyResult.valid,
-            hasKey: !!keyResult.key,
-            referenceId: keyResult.key?.referenceId,
-          });
-
           if (!keyResult.valid || !keyResult.key) {
-            return Response.json({ error: "Invalid or expired API key" }, { status: 401 });
+            return Response.json(
+              { error: "Invalid or expired API key" },
+              { status: 401 },
+            );
           }
 
           const formData = await request.formData();
           const projectId = formData.get("project_id") as string;
-
-          console.log("[UPLOAD] Project ID:", projectId);
 
           // Validate project exists and API key belongs to project's organization
           const project = await db.query.projects.findFirst({
             where: eq(projects.id, projectId),
           });
 
-          console.log("[UPLOAD] Project lookup result:", {
-            found: !!project,
-            projectOrgId: project?.organizationId,
-            keyReferenceId: keyResult.key.referenceId,
-            match: project?.organizationId === keyResult.key.referenceId,
-          });
-
           if (!project) {
-            return Response.json({ error: "Project not found" }, { status: 404 });
+            return Response.json(
+              { error: "Project not found" },
+              { status: 404 },
+            );
           }
 
           // Verify API key belongs to the organization that owns this project
@@ -138,11 +134,10 @@ export const Route = createFileRoute("/api/upload")({
             });
             return Response.json(
               { error: "API key is not authorized for this project" },
-              { status: 403 }
+              { status: 403 },
             );
           }
-          
-          console.log("[UPLOAD] Authorization successful");
+
           const commitSha = formData.get("commit_sha") as string;
           const branch = formData.get("branch") as string;
           const prNumber = formData.get("pr_number") as string | null;
@@ -151,14 +146,17 @@ export const Route = createFileRoute("/api/upload")({
 
           if (!projectId || !commitSha || !branch) {
             return Response.json(
-              { error: "Missing required fields: project_id, commit_sha, branch" },
-              { status: 400 }
+              {
+                error:
+                  "Missing required fields: project_id, commit_sha, branch",
+              },
+              { status: 400 },
             );
           }
           if (!coverageSummary) {
             return Response.json(
               { error: "Missing required file: coverage_summary" },
-              { status: 400 }
+              { status: 400 },
             );
           }
 
@@ -166,7 +164,10 @@ export const Route = createFileRoute("/api/upload")({
           try {
             coverageResult = parseJsonCoverage(await coverageSummary.text());
           } catch {
-            return Response.json({ error: "Invalid coverage summary JSON" }, { status: 400 });
+            return Response.json(
+              { error: "Invalid coverage summary JSON" },
+              { status: 400 },
+            );
           }
 
           if (lcovFile) {
@@ -174,7 +175,10 @@ export const Route = createFileRoute("/api/upload")({
               const lcovResult = parseLcov(await lcovFile.text());
               coverageResult.perFile = lcovResult.perFile;
             } catch {
-              return Response.json({ error: "Invalid LCOV file" }, { status: 400 });
+              return Response.json(
+                { error: "Invalid LCOV file" },
+                { status: 400 },
+              );
             }
           }
 
@@ -188,37 +192,80 @@ export const Route = createFileRoute("/api/upload")({
           if (baseRun) {
             diffVsBase = computeDiff(
               {
-                lines: { total: baseRun.totalLines, covered: baseRun.coveredLines, skipped: 0, pct: baseRun.linesPct },
-                branches: { total: 0, covered: 0, skipped: 0, pct: baseRun.branchesPct },
-                functions: { total: 0, covered: 0, skipped: 0, pct: baseRun.functionsPct },
-                statements: { total: 0, covered: 0, skipped: 0, pct: baseRun.statementsPct },
+                lines: {
+                  total: baseRun.totalLines,
+                  covered: baseRun.coveredLines,
+                  skipped: 0,
+                  pct: baseRun.linesPct,
+                },
+                branches: {
+                  total: 0,
+                  covered: 0,
+                  skipped: 0,
+                  pct: baseRun.branchesPct,
+                },
+                functions: {
+                  total: 0,
+                  covered: 0,
+                  skipped: 0,
+                  pct: baseRun.functionsPct,
+                },
+                statements: {
+                  total: 0,
+                  covered: 0,
+                  skipped: 0,
+                  pct: baseRun.statementsPct,
+                },
               },
-              coverageResult.summary
+              coverageResult.summary,
             );
-            filesChanged = computeFileDiff(runToFileCoverage(baseRun), coverageResult.perFile);
+            filesChanged = computeFileDiff(
+              runToFileCoverage(baseRun),
+              coverageResult.perFile,
+            );
           }
 
           if (prevRun) {
             diffVsPrevious = computeDiff(
               {
-                lines: { total: prevRun.totalLines, covered: prevRun.coveredLines, skipped: 0, pct: prevRun.linesPct },
-                branches: { total: 0, covered: 0, skipped: 0, pct: prevRun.branchesPct },
-                functions: { total: 0, covered: 0, skipped: 0, pct: prevRun.functionsPct },
-                statements: { total: 0, covered: 0, skipped: 0, pct: prevRun.statementsPct },
+                lines: {
+                  total: prevRun.totalLines,
+                  covered: prevRun.coveredLines,
+                  skipped: 0,
+                  pct: prevRun.linesPct,
+                },
+                branches: {
+                  total: 0,
+                  covered: 0,
+                  skipped: 0,
+                  pct: prevRun.branchesPct,
+                },
+                functions: {
+                  total: 0,
+                  covered: 0,
+                  skipped: 0,
+                  pct: prevRun.functionsPct,
+                },
+                statements: {
+                  total: 0,
+                  covered: 0,
+                  skipped: 0,
+                  pct: prevRun.statementsPct,
+                },
               },
-              coverageResult.summary
+              coverageResult.summary,
             );
           }
 
-          const fileCoverage: FileInfo[] = Object.entries(coverageResult.perFile).map(
-            ([file, metrics]) => ({
-              file,
-              lines: metrics.lines.pct,
-              branches: metrics.branches.pct,
-              functions: metrics.functions.pct,
-              statements: metrics.statements.pct,
-            })
-          );
+          const fileCoverage: FileInfo[] = Object.entries(
+            coverageResult.perFile,
+          ).map(([file, metrics]) => ({
+            file,
+            lines: metrics.lines.pct,
+            branches: metrics.branches.pct,
+            functions: metrics.functions.pct,
+            statements: metrics.statements.pct,
+          }));
 
           const [newRun] = await db
             .insert(runs)

@@ -11,7 +11,9 @@ export const Route = createFileRoute("/projects/$id/api-keys")({
   loader: async ({ params, context }) => {
     const h: Record<string, string> = {};
     if (context.auth?.cookie) h.cookie = context.auth.cookie;
-    const res = await fetch(apiUrl(`/api/projects/${params.id}`), { headers: h });
+    const res = await fetch(apiUrl(`/api/projects/${params.id}`), {
+      headers: h,
+    });
     if (!res.ok) throw new Error("Not found");
     return res.json();
   },
@@ -28,20 +30,16 @@ function ApiKeysPage() {
       name: "",
     },
     onSubmit: async ({ value }) => {
-      console.log("[API KEYS] Creating key for project:", id);
-      
       // Use our custom API endpoint that properly sets the organization referenceId
       const res = await fetch(`/api/projects/${id}/api-key`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: value.name.trim(),
         }),
       });
-
-      console.log("[API KEYS] Create response status:", res.status);
 
       if (!res.ok) {
         const data = await res.json();
@@ -50,11 +48,6 @@ function ApiKeysPage() {
       }
 
       const key = await res.json();
-      console.log("[API KEYS] Key created:", {
-        id: key.id,
-        name: key.name,
-        referenceId: key.referenceId,
-      });
       setNewKey(key.key);
       form.reset();
     },
@@ -63,14 +56,20 @@ function ApiKeysPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card px-6 py-4">
-        <Link to="/projects/$id" params={{ id }} className="text-sm text-muted-foreground hover:underline">
+        <Link
+          to="/projects/$id"
+          params={{ id }}
+          className="text-sm text-muted-foreground hover:underline"
+        >
           Back to project
         </Link>
         <h1 className="text-xl font-bold">API Keys</h1>
       </header>
       <main className="mx-auto max-w-2xl p-6">
         <Card>
-          <CardHeader><CardTitle>Create API Key</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Create API Key</CardTitle>
+          </CardHeader>
           <CardContent>
             <form
               onSubmit={(e) => {
@@ -86,8 +85,8 @@ function ApiKeysPage() {
                     !value.trim()
                       ? "API key name is required"
                       : value.trim().length < 2
-                      ? "Name must be at least 2 characters"
-                      : undefined,
+                        ? "Name must be at least 2 characters"
+                        : undefined,
                 }}
               >
                 {(field) => (
@@ -99,7 +98,9 @@ function ApiKeysPage() {
                       placeholder="My CI key"
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600 mt-1">{field.state.meta.errors[0]}</p>
+                      <p className="text-sm text-red-600 mt-1">
+                        {field.state.meta.errors[0]}
+                      </p>
                     )}
                   </div>
                 )}
@@ -115,31 +116,50 @@ function ApiKeysPage() {
               </form.Subscribe>
             </form>
 
-            <form.Subscribe
-              selector={(state) => state.errorMap}
-            >
+            <form.Subscribe selector={(state) => state.errorMap}>
               {(errorMap) =>
-                errorMap && typeof errorMap === 'object' && errorMap.onSubmit ? (
-                  <p className="text-sm text-red-600 mt-2">{(errorMap.onSubmit as Error).message}</p>
+                errorMap &&
+                typeof errorMap === "object" &&
+                errorMap.onSubmit ? (
+                  <p className="text-sm text-red-600 mt-2">
+                    {(errorMap.onSubmit as Error).message}
+                  </p>
                 ) : null
               }
             </form.Subscribe>
 
             <p className="mt-2 text-sm text-muted-foreground">
-              This API key will be used by the GitHub Action to upload coverage data.
+              This API key will be used by the GitHub Action to upload coverage
+              data.
             </p>
           </CardContent>
         </Card>
       </main>
 
-      <Dialog open={!!newKey} onOpenChange={(v) => { if (!v) setNewKey(""); }}>
+      <Dialog
+        open={!!newKey}
+        onOpenChange={(v) => {
+          if (!v) setNewKey("");
+        }}
+      >
         <DialogHeader>
           <DialogTitle>API Key Created</DialogTitle>
         </DialogHeader>
-        <p className="text-sm mb-2">Copy this key now — you won't be able to see it again.</p>
-        <pre className="p-3 bg-muted rounded-md text-sm font-mono break-all select-all">{newKey}</pre>
+        <p className="text-sm mb-2">
+          Copy this key now — you won't be able to see it again.
+        </p>
+        <pre className="p-3 bg-muted rounded-md text-sm font-mono break-all select-all">
+          {newKey}
+        </pre>
         <div className="flex justify-end mt-4">
-          <Button onClick={() => { navigator.clipboard.writeText(newKey); setNewKey(""); }}>Copied</Button>
+          <Button
+            onClick={() => {
+              navigator.clipboard.writeText(newKey);
+              setNewKey("");
+            }}
+          >
+            Copied
+          </Button>
         </div>
       </Dialog>
     </div>

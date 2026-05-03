@@ -84,6 +84,9 @@ importers:
       tailwindcss:
         specifier: ^4.0.0
         version: 4.2.4
+      zod:
+        specifier: ^4.4.2
+        version: 4.4.2
     devDependencies:
       '@types/pg':
         specifier: ^8.11.0

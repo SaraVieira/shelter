@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "../../server/auth";
+import { createOrganizationSchema, formatZodErrors } from "../../server/validation/schemas";
 
 export const Route = createFileRoute("/api/organizations")({
   server: {
@@ -20,20 +21,27 @@ export const Route = createFileRoute("/api/organizations")({
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        let body: { name: string; slug?: string };
+        let body: unknown;
         try {
           body = await request.json();
         } catch {
           return Response.json({ error: "Invalid JSON body" }, { status: 400 });
         }
-        if (!body.name?.trim()) {
-          return Response.json({ error: "Organization name is required" }, { status: 400 });
+
+        const validationResult = createOrganizationSchema.safeParse(body);
+        if (!validationResult.success) {
+          return Response.json(
+            { error: "Validation failed", details: formatZodErrors(validationResult.error) },
+            { status: 400 }
+          );
         }
+
+        const { name, slug } = validationResult.data;
 
         const result = await auth.api.createOrganization({
           body: {
-            name: body.name.trim(),
-            slug: body.slug || body.name.trim().toLowerCase().replace(/\s+/g, "-"),
+            name: name.trim(),
+            slug: slug || name.trim().toLowerCase().replace(/\s+/g, "-"),
           },
           headers: request.headers,
         });

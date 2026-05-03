@@ -11,6 +11,8 @@ import {
 } from "../../server/diff/coverage.diff";
 import type { FileCoverageSummary } from "../../server/parsers/coverage.types";
 import { eq, desc, and, or, ne } from "drizzle-orm";
+import { uploadCoverageSchema, formatZodErrors } from "../../server/validation/schemas";
+import { uploadRateLimit } from "../../server/rate-limit";
 
 interface UploadResponse {
   runId: string;
@@ -91,6 +93,12 @@ export const Route = createFileRoute("/api/upload")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Check rate limit first
+        const rateLimitResponse = await uploadRateLimit(request);
+        if (rateLimitResponse) {
+          return rateLimitResponse;
+        }
+        
         try {
           const apiKey = request.headers
             .get("authorization")
@@ -112,7 +120,24 @@ export const Route = createFileRoute("/api/upload")({
           }
 
           const formData = await request.formData();
-          const projectId = formData.get("project_id") as string;
+          
+          // Validate required fields with Zod
+          const validationData = {
+            project_id: formData.get("project_id") as string,
+            commit_sha: formData.get("commit_sha") as string,
+            branch: formData.get("branch") as string,
+            pr_number: formData.get("pr_number") as string | null,
+          };
+          
+          const validationResult = uploadCoverageSchema.safeParse(validationData);
+          if (!validationResult.success) {
+            return Response.json(
+              { error: "Validation failed", details: formatZodErrors(validationResult.error) },
+              { status: 400 }
+            );
+          }
+          
+          const { project_id: projectId, commit_sha: commitSha, branch, pr_number: prNumber } = validationResult.data;
 
           // Validate project exists and API key belongs to project's organization
           const project = await db.query.projects.findFirst({
@@ -138,25 +163,28 @@ export const Route = createFileRoute("/api/upload")({
             );
           }
 
-          const commitSha = formData.get("commit_sha") as string;
-          const branch = formData.get("branch") as string;
-          const prNumber = formData.get("pr_number") as string | null;
           const coverageSummary = formData.get("coverage_summary") as File;
           const lcovFile = formData.get("lcov") as File | null;
 
-          if (!projectId || !commitSha || !branch) {
-            return Response.json(
-              {
-                error:
-                  "Missing required fields: project_id, commit_sha, branch",
-              },
-              { status: 400 },
-            );
-          }
           if (!coverageSummary) {
             return Response.json(
               { error: "Missing required file: coverage_summary" },
               { status: 400 },
+            );
+          }
+          
+          // Check file size (50MB limit as per design spec)
+          const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+          if (coverageSummary.size > MAX_FILE_SIZE) {
+            return Response.json(
+              { error: "Coverage summary file exceeds 50MB limit" },
+              { status: 413 },
+            );
+          }
+          if (lcovFile && lcovFile.size > MAX_FILE_SIZE) {
+            return Response.json(
+              { error: "LCOV file exceeds 50MB limit" },
+              { status: 413 },
             );
           }
 

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "../../server/auth";
+import { createInvitationSchema, formatZodErrors } from "../../server/validation/schemas";
 
 export const Route = createFileRoute("/api/invite")({
   server: {
@@ -10,17 +11,22 @@ export const Route = createFileRoute("/api/invite")({
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        let body: { slug: string; email: string };
+        let body: unknown;
         try {
-          body = await request.json() as { slug: string; email: string };
+          body = await request.json();
         } catch {
           return Response.json({ error: "Invalid JSON body" }, { status: 400 });
         }
 
-        const { slug, email } = body;
-        if (!slug || !email?.trim()) {
-          return Response.json({ error: "slug and email are required" }, { status: 400 });
+        const validationResult = createInvitationSchema.safeParse(body);
+        if (!validationResult.success) {
+          return Response.json(
+            { error: "Validation failed", details: formatZodErrors(validationResult.error) },
+            { status: 400 }
+          );
         }
+
+        const { slug, email } = validationResult.data;
 
         const orgs = await auth.api.listOrganizations({ headers: request.headers });
         const org = orgs.find((o: any) => o.slug === slug);

@@ -3,6 +3,7 @@ import { auth } from "../../server/auth";
 import { db } from "../../db";
 import { projects, runs } from "../../db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
+import { createProjectSchema, formatZodErrors } from "../../server/validation/schemas";
 
 export const Route = createFileRoute("/api/projects")({
   server: {
@@ -52,21 +53,22 @@ export const Route = createFileRoute("/api/projects")({
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-        let body: Record<string, string>;
+        let body: unknown;
         try {
           body = await request.json();
         } catch {
           return Response.json({ error: "Invalid JSON body" }, { status: 400 });
         }
 
-        const { name, organizationId, repoUrl, language, framework, coverageTool } = body;
-
-        if (!name || !organizationId) {
+        const validationResult = createProjectSchema.safeParse(body);
+        if (!validationResult.success) {
           return Response.json(
-            { error: "name and organizationId are required" },
+            { error: "Validation failed", details: formatZodErrors(validationResult.error) },
             { status: 400 }
           );
         }
+
+        const { name, organizationId, repoUrl, language, framework, coverageTool } = validationResult.data;
 
         const orgs = await auth.api.listOrganizations({ headers: request.headers });
         const isMember = orgs.some((o: any) => o.id === organizationId);
@@ -79,10 +81,10 @@ export const Route = createFileRoute("/api/projects")({
           .values({
             organizationId,
             name,
-            repoUrl,
-            language,
-            framework,
-            coverageTool,
+            repoUrl: repoUrl || undefined,
+            language: language || undefined,
+            framework: framework || undefined,
+            coverageTool: coverageTool || undefined,
           })
           .returning();
 

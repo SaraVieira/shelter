@@ -4,19 +4,22 @@ import { db } from "../../db";
 import { projects, runs } from "../../db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { createProjectSchema, formatZodErrors } from "../../server/validation/schemas";
+import { sendError, sendSuccess, ErrorCodes } from "../../server/api-response";
 
 export const Route = createFileRoute("/api/projects")({
   server: {
     handlers: {
       GET: async ({ request }) => {
         const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+        if (!session?.user) {
+          return sendError(ErrorCodes.UNAUTHORIZED, "Unauthorized");
+        }
 
         const orgs = await auth.api.listOrganizations({
           headers: request.headers,
         });
         const orgIds = orgs.map((org: any) => org.id);
-        if (orgIds.length === 0) return Response.json([]);
+        if (orgIds.length === 0) return sendSuccess([]);
 
         const userProjects = await db
           .select()
@@ -47,24 +50,27 @@ export const Route = createFileRoute("/api/projects")({
           })
         );
 
-        return Response.json(result);
+        return sendSuccess(result);
       },
       POST: async ({ request }) => {
         const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+        if (!session?.user) {
+          return sendError(ErrorCodes.UNAUTHORIZED, "Unauthorized");
+        }
 
         let body: unknown;
         try {
           body = await request.json();
         } catch {
-          return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+          return sendError(ErrorCodes.INVALID_JSON, "Invalid JSON body");
         }
 
         const validationResult = createProjectSchema.safeParse(body);
         if (!validationResult.success) {
-          return Response.json(
-            { error: "Validation failed", details: formatZodErrors(validationResult.error) },
-            { status: 400 }
+          return sendError(
+            ErrorCodes.VALIDATION_ERROR,
+            "Validation failed",
+            formatZodErrors(validationResult.error)
           );
         }
 
@@ -73,7 +79,10 @@ export const Route = createFileRoute("/api/projects")({
         const orgs = await auth.api.listOrganizations({ headers: request.headers });
         const isMember = orgs.some((o: any) => o.id === organizationId);
         if (!isMember) {
-          return Response.json({ error: "You are not a member of this organization" }, { status: 403 });
+          return sendError(
+            ErrorCodes.FORBIDDEN,
+            "You are not a member of this organization"
+          );
         }
 
         const [newProject] = await db
@@ -88,7 +97,7 @@ export const Route = createFileRoute("/api/projects")({
           })
           .returning();
 
-        return Response.json(newProject, { status: 201 });
+        return sendSuccess(newProject, 201);
       },
     },
   },

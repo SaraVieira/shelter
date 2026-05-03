@@ -13,6 +13,7 @@ import type { FileCoverageSummary } from "../../server/parsers/coverage.types";
 import { eq, desc, and, or, ne } from "drizzle-orm";
 import { uploadCoverageSchema, formatZodErrors } from "../../server/validation/schemas";
 import { uploadRateLimit } from "../../server/rate-limit";
+import { sendError, sendSuccess, ErrorCodes } from "../../server/api-response";
 
 interface UploadResponse {
   runId: string;
@@ -105,7 +106,7 @@ export const Route = createFileRoute("/api/upload")({
             ?.replace("Bearer ", "");
 
           if (!apiKey) {
-            return Response.json({ error: "Missing API key" }, { status: 401 });
+            return sendError(ErrorCodes.UNAUTHORIZED, "Missing API key");
           }
 
           const keyResult = await auth.api.verifyApiKey({
@@ -113,10 +114,7 @@ export const Route = createFileRoute("/api/upload")({
           });
 
           if (!keyResult.valid || !keyResult.key) {
-            return Response.json(
-              { error: "Invalid or expired API key" },
-              { status: 401 },
-            );
+            return sendError(ErrorCodes.INVALID_API_KEY, "Invalid or expired API key");
           }
 
           const formData = await request.formData();
@@ -131,9 +129,10 @@ export const Route = createFileRoute("/api/upload")({
           
           const validationResult = uploadCoverageSchema.safeParse(validationData);
           if (!validationResult.success) {
-            return Response.json(
-              { error: "Validation failed", details: formatZodErrors(validationResult.error) },
-              { status: 400 }
+            return sendError(
+              ErrorCodes.VALIDATION_ERROR,
+              "Validation failed",
+              formatZodErrors(validationResult.error)
             );
           }
           
@@ -145,10 +144,7 @@ export const Route = createFileRoute("/api/upload")({
           });
 
           if (!project) {
-            return Response.json(
-              { error: "Project not found" },
-              { status: 404 },
-            );
+            return sendError(ErrorCodes.PROJECT_NOT_FOUND, "Project not found");
           }
 
           // Verify API key belongs to the organization that owns this project
@@ -157,9 +153,9 @@ export const Route = createFileRoute("/api/upload")({
               keyReferenceId: keyResult.key.referenceId,
               projectOrgId: project.organizationId,
             });
-            return Response.json(
-              { error: "API key is not authorized for this project" },
-              { status: 403 },
+            return sendError(
+              ErrorCodes.API_KEY_NOT_AUTHORIZED,
+              "API key is not authorized for this project"
             );
           }
 
@@ -167,24 +163,24 @@ export const Route = createFileRoute("/api/upload")({
           const lcovFile = formData.get("lcov") as File | null;
 
           if (!coverageSummary) {
-            return Response.json(
-              { error: "Missing required file: coverage_summary" },
-              { status: 400 },
+            return sendError(
+              ErrorCodes.MISSING_FIELD,
+              "Missing required file: coverage_summary"
             );
           }
           
           // Check file size (50MB limit as per design spec)
           const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
           if (coverageSummary.size > MAX_FILE_SIZE) {
-            return Response.json(
-              { error: "Coverage summary file exceeds 50MB limit" },
-              { status: 413 },
+            return sendError(
+              ErrorCodes.FILE_TOO_LARGE,
+              "Coverage summary file exceeds 50MB limit"
             );
           }
           if (lcovFile && lcovFile.size > MAX_FILE_SIZE) {
-            return Response.json(
-              { error: "LCOV file exceeds 50MB limit" },
-              { status: 413 },
+            return sendError(
+              ErrorCodes.FILE_TOO_LARGE,
+              "LCOV file exceeds 50MB limit"
             );
           }
 
@@ -192,9 +188,9 @@ export const Route = createFileRoute("/api/upload")({
           try {
             coverageResult = parseJsonCoverage(await coverageSummary.text());
           } catch {
-            return Response.json(
-              { error: "Invalid coverage summary JSON" },
-              { status: 400 },
+            return sendError(
+              ErrorCodes.INVALID_FORMAT,
+              "Invalid coverage summary JSON"
             );
           }
 
@@ -203,9 +199,9 @@ export const Route = createFileRoute("/api/upload")({
               const lcovResult = parseLcov(await lcovFile.text());
               coverageResult.perFile = lcovResult.perFile;
             } catch {
-              return Response.json(
-                { error: "Invalid LCOV file" },
-                { status: 400 },
+              return sendError(
+                ErrorCodes.INVALID_FORMAT,
+                "Invalid LCOV file"
               );
             }
           }
@@ -327,9 +323,13 @@ export const Route = createFileRoute("/api/upload")({
             filesChanged,
           };
 
-          return Response.json(response);
+          return sendSuccess(response, 201);
         } catch (error: any) {
-          return Response.json({ error: error.message }, { status: 500 });
+          console.error("[UPLOAD] Unexpected error:", error);
+          return sendError(
+            ErrorCodes.INTERNAL_ERROR,
+            "An unexpected error occurred while processing the upload"
+          );
         }
       },
     },

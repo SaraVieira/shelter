@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "../../server/auth";
 import { createOrganizationSchema, formatZodErrors } from "../../server/validation/schemas";
+import { sendError, sendSuccess, ErrorCodes } from "../../server/api-response";
 
 export const Route = createFileRoute("/api/organizations")({
   server: {
@@ -8,31 +9,32 @@ export const Route = createFileRoute("/api/organizations")({
       GET: async ({ request }) => {
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
+          return sendError(ErrorCodes.UNAUTHORIZED, "Unauthorized");
         }
         const orgs = await auth.api.listOrganizations({
           headers: request.headers,
         });
-        return Response.json(orgs);
+        return sendSuccess(orgs);
       },
       POST: async ({ request }) => {
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
+          return sendError(ErrorCodes.UNAUTHORIZED, "Unauthorized");
         }
 
         let body: unknown;
         try {
           body = await request.json();
         } catch {
-          return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+          return sendError(ErrorCodes.INVALID_JSON, "Invalid JSON body");
         }
 
         const validationResult = createOrganizationSchema.safeParse(body);
         if (!validationResult.success) {
-          return Response.json(
-            { error: "Validation failed", details: formatZodErrors(validationResult.error) },
-            { status: 400 }
+          return sendError(
+            ErrorCodes.VALIDATION_ERROR,
+            "Validation failed",
+            formatZodErrors(validationResult.error)
           );
         }
 
@@ -47,15 +49,18 @@ export const Route = createFileRoute("/api/organizations")({
         });
 
         if (!result) {
-          return Response.json({ error: "Failed to create organization" }, { status: 500 });
+          return sendError(
+            ErrorCodes.INTERNAL_ERROR,
+            "Failed to create organization"
+          );
         }
 
-        return Response.json({
+        return sendSuccess({
           id: result.id,
           name: result.name,
           slug: result.slug,
           role: "owner",
-        }, { status: 201 });
+        }, 201);
       },
     },
   },

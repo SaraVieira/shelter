@@ -44,6 +44,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: false,
   },
+  // CSRF Protection is enabled by default with tanstackStartCookies
+  // Additional security settings
+  advanced: {
+    // Use secure cookies in production
+    useSecureCookies: process.env.NODE_ENV === "production",
+    // Disable CSRF for API key authenticated requests (they use Authorization header)
+    disableCSRFCheck: false, // Keep CSRF enabled for session-based requests
+  },
   plugins: [
     apiKey({
       // Configure API keys to be organization-owned
